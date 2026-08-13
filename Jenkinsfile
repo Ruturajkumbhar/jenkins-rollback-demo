@@ -2,9 +2,7 @@ pipeline {
 
     agent any
 
-    tools {
-        nodejs "NodeJS-22"
-    }
+
 
     environment {
         APP_DIR = "/var/www/nodeapp"
