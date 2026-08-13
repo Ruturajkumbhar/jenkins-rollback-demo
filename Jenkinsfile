@@ -2,10 +2,10 @@ pipeline {
 
     agent any
 
-
-
+   
     environment {
         APP_DIR = "/var/www/nodeapp"
+        APP_NAME = "nodeapp"
     }
 
     stages {
@@ -19,38 +19,54 @@ pipeline {
         stage('Checkout') {
             steps {
                 git branch: 'main',
-                url: 'https://github.com/RuturajKumbhar/jenkins-rollback-demo.git'
+                    url: 'https://github.com/RuturajKumbhar/jenkins-rollback-demo.git'
             }
         }
 
         stage('Install Dependencies') {
             steps {
-                sh 'npm install'
+                sh '''
+                    npm install
+                '''
             }
         }
 
         stage('Deploy') {
             steps {
                 sh '''
-                rm -rf ${APP_DIR}/*
-                cp -r * ${APP_DIR}/
+                    mkdir -p ${APP_DIR}
+
+                    rm -rf ${APP_DIR}/*
+
+                    cp -r . ${APP_DIR}/
+
+                    cd ${APP_DIR}
+
+                    # Don't copy Jenkins/Git files to production
+                    rm -rf .git
                 '''
             }
         }
 
-        stage('Stop Previous App') {
+        stage('PM2 Stop Previous App') {
             steps {
                 sh '''
-                pkill node || true
+                    pm2 stop ${APP_NAME} || true
+                    pm2 delete ${APP_NAME} || true
                 '''
             }
         }
 
-        stage('Start Application') {
+        stage('PM2 Start Application') {
             steps {
                 sh '''
-                cd ${APP_DIR}
-                nohup npm start > app.log 2>&1 &
+                    cd ${APP_DIR}
+
+                    pm2 start npm \
+                        --name "${APP_NAME}" \
+                        -- start
+
+                    pm2 save
                 '''
             }
         }
@@ -58,12 +74,26 @@ pipeline {
         stage('Verify') {
             steps {
                 sh '''
-                sleep 5
-                curl http://localhost:3000
+                    sleep 5
+
+                    pm2 status
+
+                    curl --fail http://localhost:3000
                 '''
             }
         }
 
     }
 
+    post {
+        success {
+            echo 'Deployment successful!'
+            sh 'pm2 status'
+        }
+
+        failure {
+            echo 'Deployment failed!'
+            sh 'pm2 status || true'
+        }
+    }
 }
