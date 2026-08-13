@@ -19,7 +19,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 git branch: 'main',
-                url: 'https://github.com/yourusername/jenkins-rollback-demo.git'
+                url: 'https://github.com/RuturajKumbhar/jenkins-rollback-demo.git'
             }
         }
 
